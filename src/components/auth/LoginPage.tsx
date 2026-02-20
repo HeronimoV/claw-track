@@ -39,8 +39,8 @@ export default function LoginPage() {
       <div className="w-full max-w-md animate-scaleIn">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-red-50 mb-4">
-            <span className="text-3xl font-bold text-[#DC2626]">CT</span>
+          <div className="inline-flex items-center justify-center w-20 h-20 mb-4">
+            <img src="/logo.png" alt="ClawTrack" className="w-20 h-20 object-contain" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">ClawTrack</h1>
           <p className="text-sm text-gray-400 mt-1">CRM Pipeline Manager</p>

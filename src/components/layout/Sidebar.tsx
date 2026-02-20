@@ -20,7 +20,7 @@ export default function Sidebar() {
     <aside className="w-60 bg-[#111827] flex flex-col h-screen shrink-0">
       <div className="p-5 border-b border-white/10">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-[#DC2626] flex items-center justify-center text-white font-bold text-sm">CT</div>
+          <img src="/logo.png" alt="ClawTrack" className="w-8 h-8 object-contain" />
           <div>
             <h1 className="text-base font-bold text-white tracking-tight">ClawTrack</h1>
             <p className="text-[10px] text-gray-500 uppercase tracking-widest">CRM Pipeline</p>
