@@ -16,7 +16,7 @@ export default function StageColumn({ stage, leads, settings }: Props) {
   return (
     <div
       ref={setNodeRef}
-      className={`w-72 flex flex-col rounded-xl transition-all shrink-0 ${
+      className={`flex flex-col rounded-xl transition-all min-w-0 ${
         isOver ? 'bg-red-50 ring-1 ring-red-300' : 'bg-white/80'
       }`}
     >

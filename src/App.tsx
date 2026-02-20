@@ -20,7 +20,6 @@ import TaskManager from './components/tasks/TaskManager';
 import RevenueTracker from './components/revenue/RevenueTracker';
 import EmailTemplates from './components/emails/EmailTemplates';
 import Leaderboard from './components/leaderboard/Leaderboard';
-import MeetingNotes from './components/meetings/MeetingNotes';
 
 function AppContent() {
   const { state } = useApp();
@@ -51,7 +50,6 @@ function AppContent() {
       case 'revenue': return <RevenueTracker />;
       case 'emails': return <EmailTemplates />;
       case 'leaderboard': return <Leaderboard />;
-      case 'meetings': return <MeetingNotes />;
       default: return <PipelineBoard />;
     }
   };

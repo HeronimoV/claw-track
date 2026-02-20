@@ -6,6 +6,7 @@ import { PIPELINE_STAGES, INDUSTRIES, LEAD_SOURCES } from '../../types';
 import type { Lead, ActivityType } from '../../types';
 import { formatCurrency, formatDate, daysInStage, isCallOverdue } from '../../utils/helpers';
 import { getInitials } from '../../utils/auth';
+import MeetingNotesSection from '../meetings/MeetingNotesSection';
 
 const inputClass = "w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-brand/50 focus:ring-1 focus:ring-brand/25 transition-all";
 const labelClass = "block text-[10px] font-medium text-text-tertiary uppercase tracking-wider mb-1";
@@ -291,6 +292,15 @@ export default function LeadDetail() {
               {lead.notes.length === 0 && <p className="text-xs text-text-tertiary">No notes yet</p>}
             </div>
           </div>
+
+          {/* Meeting Notes */}
+          <MeetingNotesSection
+            entityId={lead.id}
+            companyName={lead.companyName || ''}
+            contactName={lead.pointOfContact || ''}
+            inputClass={inputClass}
+            labelClass={labelClass}
+          />
         </div>
 
         {/* Right sidebar */}

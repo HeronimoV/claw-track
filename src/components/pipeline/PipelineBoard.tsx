@@ -35,9 +35,9 @@ export default function PipelineBoard() {
   return (
     <div className="flex flex-col h-full">
       <FilterBar />
-      <div className="flex-1 overflow-x-auto p-4">
+      <div className="flex-1 overflow-hidden p-4">
         <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-          <div className="flex gap-3 h-full min-w-max">
+          <div className="grid gap-3 h-full" style={{ gridTemplateColumns: `repeat(${PIPELINE_STAGES.length}, 1fr)` }}>
             {PIPELINE_STAGES.map(stage => (
               <StageColumn
                 key={stage.key}

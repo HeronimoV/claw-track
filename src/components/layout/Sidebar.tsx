@@ -15,7 +15,6 @@ export default function Sidebar() {
     { key: 'list' as const, label: 'All Leads', icon: '📋' },
     { key: 'clients' as const, label: 'Active Clients', icon: '👥' },
     { key: 'tasks' as const, label: 'Tasks', icon: '📅' },
-    { key: 'meetings' as const, label: 'Meeting Notes', icon: '📝' },
     { key: 'reports' as const, label: 'Reports', icon: '📉' },
     { key: 'revenue' as const, label: 'Revenue', icon: '💰' },
     { key: 'contracts' as const, label: 'Contracts', icon: '📄' },

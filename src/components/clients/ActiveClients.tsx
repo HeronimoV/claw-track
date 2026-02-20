@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../utils/supabase';
 import { useAuth } from '../../store/AuthContext';
+import MeetingNotesSection, { DEFAULT_LEAD_TYPES, CLIENT_EXTRA_TYPES } from '../meetings/MeetingNotesSection';
 
 interface ClientNote {
   id: string;
@@ -553,6 +554,18 @@ export default function ActiveClients() {
                   )}
                 </div>
               </div>
+            </div>
+
+            {/* Meeting Notes Section */}
+            <div className="px-6 pb-6">
+              <MeetingNotesSection
+                entityId={selectedClient.id}
+                companyName={selectedClient.company_name}
+                contactName={selectedClient.point_of_contact || ''}
+                meetingTypes={[...DEFAULT_LEAD_TYPES, ...CLIENT_EXTRA_TYPES]}
+                inputClass={inputClass}
+                labelClass={labelClass}
+              />
             </div>
           </div>
         </div>
