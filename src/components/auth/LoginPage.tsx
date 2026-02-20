@@ -8,13 +8,13 @@ export default function LoginPage() {
   const { loginWithPin, registerWithPin, isProfileRegistered } = useAuth();
   const [screen, setScreen] = useState<Screen>('select');
   const [selectedProfile, setSelectedProfile] = useState<ProfileConfig | null>(null);
-  const [pin, setPin] = useState<string[]>(['', '', '', '', '']);
+  const [pin, setPin] = useState<string[]>(['', '', '', '']);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const resetPin = useCallback(() => {
-    setPin(['', '', '', '', '']);
+    setPin(['', '', '', '']);
     setError('');
   }, []);
 
@@ -45,12 +45,12 @@ export default function LoginPage() {
     setPin(newPin);
     setError('');
 
-    if (digit && index < 4) {
+    if (digit && index < 3) {
       inputRefs.current[index + 1]?.focus();
     }
 
-    // Auto-submit when all 5 digits entered
-    if (digit && index === 4 && newPin.every(d => d !== '')) {
+    // Auto-submit when all 4 digits entered
+    if (digit && index === 3 && newPin.every(d => d !== '')) {
       submitPin(newPin.join(''));
     }
   };
@@ -63,11 +63,11 @@ export default function LoginPage() {
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 5);
-    if (pasted.length === 5) {
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 4);
+    if (pasted.length === 4) {
       const newPin = pasted.split('');
       setPin(newPin);
-      inputRefs.current[4]?.focus();
+      inputRefs.current[3]?.focus();
       submitPin(pasted);
     }
   };
@@ -110,7 +110,7 @@ export default function LoginPage() {
         {screen === 'select' && (
           <div className="animate-fadeIn">
             <p className="text-center text-sm text-gray-500 mb-6">Select your profile to continue</p>
-            <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {PROFILES.map(profile => {
                 const registered = isProfileRegistered(profile.id);
                 return (
@@ -126,7 +126,6 @@ export default function LoginPage() {
                       {profile.initials}
                     </div>
                     <span className="text-sm font-semibold text-gray-900">{profile.name}</span>
-                    <span className="text-[10px] text-gray-400">{profile.role}</span>
                     {registered ? (
                       <span className="text-xs text-green-600 font-medium">✅</span>
                     ) : (
@@ -158,7 +157,7 @@ export default function LoginPage() {
                 </div>
                 <h2 className="text-lg font-bold text-gray-900">{selectedProfile.name}</h2>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  {screen === 'register' ? 'Set your 5-digit PIN' : 'Enter your PIN'}
+                  {screen === 'register' ? 'Set your 4-digit PIN' : 'Enter your PIN'}
                 </p>
               </div>
 
@@ -199,8 +198,8 @@ export default function LoginPage() {
 
               <p className="text-center text-[10px] text-gray-400 mt-4">
                 {screen === 'register'
-                  ? 'Choose a memorable 5-digit PIN'
-                  : 'Numbers only · 5 digits'}
+                  ? 'Choose a memorable 4-digit PIN'
+                  : 'Numbers only · 4 digits'}
               </p>
             </div>
           </div>

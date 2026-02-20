@@ -30,7 +30,7 @@ export const LEAD_SOURCES = [
   'Cold Call', 'Cold Email', 'Website Inbound', 'Referral', 'LinkedIn', 'Event', 'Other'
 ] as const;
 
-export const TEAM_MEMBERS = ['CD', 'Chief', 'Pablo', 'Chito', 'Arturo'] as const;
+export const TEAM_MEMBERS = ['CD', 'Pablo', 'Chito', 'Arturo'] as const;
 
 export const LEAD_STATUSES = ['Active', 'On Hold', 'Lost', 'Won'] as const;
 
@@ -54,7 +54,6 @@ export interface ProfileConfig {
 
 export const PROFILES: ProfileConfig[] = [
   { id: 'cd', name: 'CD', role: 'Admin', color: '#DC2626', initials: 'CD' },
-  { id: 'chief', name: 'Chief', role: 'Admin', color: '#111827', initials: 'CH' },
   { id: 'pablo', name: 'Pablo', role: 'Sales Rep', color: '#2563EB', initials: 'PA' },
   { id: 'chito', name: 'Chito', role: 'Sales Rep', color: '#16A34A', initials: 'CI' },
   { id: 'arturo', name: 'Arturo', role: 'Sales Rep', color: '#9333EA', initials: 'AR' },
