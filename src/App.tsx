@@ -15,6 +15,15 @@ import TeamManagement from './components/team/TeamManagement';
 function AppContent() {
   const { state } = useApp();
 
+  if (state.loading) return (
+    <div className="flex items-center justify-center h-screen bg-surface-0">
+      <div className="text-center">
+        <div className="w-10 h-10 border-4 border-brand border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-text-secondary text-sm">Loading leads...</p>
+      </div>
+    </div>
+  );
+
   const renderView = () => {
     switch (state.currentView) {
       case 'pipeline': return <PipelineBoard />;
@@ -43,7 +52,16 @@ function AppContent() {
 }
 
 function AuthGate() {
-  const { currentUser } = useAuth();
+  const { currentUser, loading } = useAuth();
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-screen bg-surface-0">
+      <div className="text-center">
+        <div className="w-10 h-10 border-4 border-brand border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-text-secondary text-sm">Loading ClawTrack...</p>
+      </div>
+    </div>
+  );
 
   if (!currentUser) return <LoginPage />;
 

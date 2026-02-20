@@ -1,11 +1,15 @@
 import { useState, useRef } from 'react';
 import Modal from '../common/Modal';
 import { useApp } from '../../store/AppContext';
+import { useAuth } from '../../store/AuthContext';
 import { parseCSV } from '../../utils/csv';
+import { supabase } from '../../utils/supabase';
+import { toDbLead } from '../../utils/storage';
 import type { Lead } from '../../types';
 
 export default function ImportModal() {
   const { state, dispatch } = useApp();
+  const { currentUser } = useAuth();
   const [parsed, setParsed] = useState<Lead[] | null>(null);
   const [error, setError] = useState('');
   const [importing, setImporting] = useState(false);
@@ -23,12 +27,51 @@ export default function ImportModal() {
     }
   };
 
-  const handleImport = () => {
+  const handleImport = async () => {
     if (!parsed) return;
     setImporting(true);
-    dispatch({ type: 'IMPORT_LEADS', leads: parsed });
-    setParsed(null);
-    setImporting(false);
+    try {
+      const now = new Date().toISOString();
+      const dbLeads = parsed.map(l => {
+        const db = toDbLead(l);
+        db.created_at = l.createdDate || now;
+        db.last_edited_by = currentUser?.name;
+        db.last_edited_at = now;
+        return db;
+      });
+      const { error } = await supabase.from('leads').insert(dbLeads);
+      if (error) { alert('Import failed: ' + error.message); setImporting(false); return; }
+
+      // Insert activities for each lead
+      const activities = parsed.map(l => ({
+        id: crypto.randomUUID(),
+        lead_id: l.id,
+        type: 'Note',
+        description: 'Imported from CSV',
+        user_id: currentUser?.id,
+        user_name: currentUser?.name,
+        created_at: now,
+      }));
+      await supabase.from('activities').insert(activities);
+
+      // Insert notes
+      const notes = parsed.flatMap(l => l.notes.map(n => ({
+        id: n.id,
+        lead_id: l.id,
+        content: n.content,
+        user_id: currentUser?.id,
+        user_name: currentUser?.name,
+        created_at: n.createdAt || now,
+      })));
+      if (notes.length > 0) await supabase.from('notes').insert(notes);
+
+      dispatch({ type: 'IMPORT_LEADS', leads: parsed });
+      setParsed(null);
+    } catch (err) {
+      alert('Import failed: ' + (err instanceof Error ? err.message : 'Unknown error'));
+    } finally {
+      setImporting(false);
+    }
   };
 
   const close = () => {
