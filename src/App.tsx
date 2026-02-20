@@ -12,6 +12,7 @@ import LoginPage from './components/auth/LoginPage';
 import ProfilePage from './components/auth/ProfilePage';
 import TeamManagement from './components/team/TeamManagement';
 import HelpDesk from './components/tickets/HelpDesk';
+import ActiveClients from './components/clients/ActiveClients';
 
 function AppContent() {
   const { state } = useApp();
@@ -33,6 +34,7 @@ function AppContent() {
       case 'detail': return <LeadDetail />;
       case 'profile': return <ProfilePage />;
       case 'team': return <TeamManagement />;
+      case 'clients': return <ActiveClients />;
       case 'tickets': return <HelpDesk />;
       default: return <PipelineBoard />;
     }
