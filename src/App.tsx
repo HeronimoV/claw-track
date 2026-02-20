@@ -14,6 +14,13 @@ import TeamManagement from './components/team/TeamManagement';
 import HelpDesk from './components/tickets/HelpDesk';
 import ActiveClients from './components/clients/ActiveClients';
 import Contracts from './components/contracts/Contracts';
+import Reports from './components/reports/Reports';
+import Training from './components/training/Training';
+import TaskManager from './components/tasks/TaskManager';
+import RevenueTracker from './components/revenue/RevenueTracker';
+import EmailTemplates from './components/emails/EmailTemplates';
+import Leaderboard from './components/leaderboard/Leaderboard';
+import MeetingNotes from './components/meetings/MeetingNotes';
 
 function AppContent() {
   const { state } = useApp();
@@ -38,6 +45,13 @@ function AppContent() {
       case 'clients': return <ActiveClients />;
       case 'contracts': return <Contracts />;
       case 'tickets': return <HelpDesk />;
+      case 'reports': return <Reports />;
+      case 'training': return <Training />;
+      case 'tasks': return <TaskManager />;
+      case 'revenue': return <RevenueTracker />;
+      case 'emails': return <EmailTemplates />;
+      case 'leaderboard': return <Leaderboard />;
+      case 'meetings': return <MeetingNotes />;
       default: return <PipelineBoard />;
     }
   };

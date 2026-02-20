@@ -6,7 +6,7 @@ import { loadFilterPresets, saveFilterPresets, loadSettings, saveSettings, fromD
 import { supabase } from '../utils/supabase';
 import { useAuth } from './AuthContext';
 
-type View = 'pipeline' | 'list' | 'dashboard' | 'detail' | 'team' | 'profile' | 'tickets' | 'clients' | 'contracts';
+type View = 'pipeline' | 'list' | 'dashboard' | 'detail' | 'team' | 'profile' | 'tickets' | 'clients' | 'contracts' | 'reports' | 'training' | 'tasks' | 'revenue' | 'emails' | 'leaderboard' | 'meetings';
 
 interface State {
   leads: Lead[];
