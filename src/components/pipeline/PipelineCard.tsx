@@ -25,9 +25,9 @@ export default function PipelineCard({ lead, isDragging, settings }: Props) {
       {...attributes}
       {...listeners}
       onClick={() => dispatch({ type: 'SELECT_LEAD', id: lead.id })}
-      className={`p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-all hover:border-brand/30 ${
-        isDragging ? 'opacity-80 shadow-xl shadow-brand/10 scale-105' : ''
-      } ${overdue ? 'border-danger/40 bg-danger/5' : stale ? 'border-warning/30 bg-warning/5' : 'border-border bg-surface-2 hover:bg-surface-3'}`}
+      className={`p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-all hover:border-red-300 hover:shadow-md hover:shadow-red-500/5 ${
+        isDragging ? 'opacity-80 shadow-xl shadow-red-500/10 scale-105' : ''
+      } ${overdue ? 'border-danger/40 bg-red-50' : stale ? 'border-warning/30 bg-amber-50' : 'border-border bg-white hover:bg-white'}`}
     >
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <h4 className="text-sm font-medium text-text-primary truncate">{lead.companyName || 'Untitled'}</h4>

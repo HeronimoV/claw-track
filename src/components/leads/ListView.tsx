@@ -79,7 +79,7 @@ export default function ListView() {
                 <tr
                   key={lead.id}
                   onClick={() => dispatch({ type: 'SELECT_LEAD', id: lead.id })}
-                  className={`cursor-pointer transition-colors hover:bg-surface-2 ${overdue ? 'bg-danger/5' : ''}`}
+                  className={`cursor-pointer transition-colors hover:bg-gray-50 ${overdue ? 'bg-red-50' : ''}`}
                 >
                   <td className="px-4 py-3">
                     <div className="text-sm font-medium text-text-primary">{lead.companyName || '—'}</div>

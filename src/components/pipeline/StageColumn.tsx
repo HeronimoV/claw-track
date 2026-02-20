@@ -17,7 +17,7 @@ export default function StageColumn({ stage, leads, settings }: Props) {
     <div
       ref={setNodeRef}
       className={`w-72 flex flex-col rounded-xl transition-all shrink-0 ${
-        isOver ? 'bg-brand/5 ring-1 ring-brand/30' : 'bg-surface-1/50'
+        isOver ? 'bg-red-50 ring-1 ring-red-300' : 'bg-white/80'
       }`}
     >
       <div className="px-4 py-3 border-b border-border">
@@ -26,7 +26,7 @@ export default function StageColumn({ stage, leads, settings }: Props) {
             <span className="text-sm">{stage.icon}</span>
             <h3 className="text-sm font-semibold text-text-primary">{stage.label}</h3>
           </div>
-          <span className="text-xs bg-surface-3 text-text-secondary px-2 py-0.5 rounded-full font-medium">
+          <span className="text-xs bg-red-50 text-[#DC2626] px-2 py-0.5 rounded-full font-medium">
             {leads.length}
           </span>
         </div>

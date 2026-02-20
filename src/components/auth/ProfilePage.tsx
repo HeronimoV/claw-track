@@ -77,7 +77,7 @@ export default function ProfilePage() {
                   key={c}
                   type="button"
                   onClick={() => setAvatarColor(c)}
-                  className={`w-8 h-8 rounded-full transition-all ${avatarColor === c ? 'ring-2 ring-white ring-offset-2 ring-offset-surface-1 scale-110' : 'hover:scale-105'}`}
+                  className={`w-8 h-8 rounded-full transition-all ${avatarColor === c ? 'ring-2 ring-gray-900 ring-offset-2 ring-offset-white scale-110' : 'hover:scale-105'}`}
                   style={{ backgroundColor: c }}
                 />
               ))}

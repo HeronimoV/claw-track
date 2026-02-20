@@ -21,7 +21,7 @@ export default function Modal({ open, onClose, title, children, wide }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
       <div
         className={`relative bg-surface-1 border border-border rounded-xl shadow-2xl animate-scaleIn ${wide ? 'w-full max-w-3xl' : 'w-full max-w-lg'} max-h-[85vh] flex flex-col`}
         onClick={e => e.stopPropagation()}

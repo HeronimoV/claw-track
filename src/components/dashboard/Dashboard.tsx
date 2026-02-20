@@ -6,7 +6,7 @@ import { formatCurrency, formatDate, isOverdue, isDueToday, daysBetween } from '
 import { getInitials } from '../../utils/auth';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
-const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#84cc16'];
+const COLORS = ['#DC2626', '#6B7280', '#f59e0b', '#10b981', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#84cc16'];
 
 export default function Dashboard() {
   const { state, dispatch } = useApp();
@@ -99,7 +99,7 @@ export default function Dashboard() {
   const CustomTooltip = ({ active: a, payload }: { active?: boolean; payload?: Array<{ name: string; value: number }> }) => {
     if (!a || !payload?.length) return null;
     return (
-      <div className="bg-surface-2 border border-border rounded-lg px-3 py-2 text-xs shadow-lg">
+      <div className="bg-white border border-border rounded-lg px-3 py-2 text-xs shadow-lg">
         <p className="text-text-primary font-medium">{payload[0].name}: {payload[0].value}</p>
       </div>
     );
@@ -158,10 +158,10 @@ export default function Dashboard() {
           <h3 className="text-sm font-semibold text-text-primary mb-4">Leads by Stage</h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={stageData}>
-              <XAxis dataKey="name" tick={{ fontSize: 9, fill: '#9494a8' }} interval={0} />
-              <YAxis tick={{ fontSize: 10, fill: '#9494a8' }} allowDecimals={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 9, fill: '#6B7280' }} interval={0} />
+              <YAxis tick={{ fontSize: 10, fill: '#6B7280' }} allowDecimals={false} />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="count" fill="#10b981" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="count" fill="#DC2626" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -197,10 +197,10 @@ export default function Dashboard() {
           <h3 className="text-sm font-semibold text-text-primary mb-4">Leads by Source</h3>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={sourceData} layout="vertical">
-              <XAxis type="number" tick={{ fontSize: 10, fill: '#9494a8' }} allowDecimals={false} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#9494a8' }} width={100} />
+              <XAxis type="number" tick={{ fontSize: 10, fill: '#6B7280' }} allowDecimals={false} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#6B7280' }} width={100} />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="value" fill="#DC2626" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
