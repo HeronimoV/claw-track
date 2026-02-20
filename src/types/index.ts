@@ -30,8 +30,7 @@ export const LEAD_SOURCES = [
   'Cold Call', 'Cold Email', 'Website Inbound', 'Referral', 'LinkedIn', 'Event', 'Other'
 ] as const;
 
-// Keep for backward compat but dynamic team members are preferred
-export const TEAM_MEMBERS = ['CD', 'Alex Rivera', 'Jordan Kim', 'Sam Patel'] as const;
+export const TEAM_MEMBERS = ['CD', 'Chief', 'Pablo', 'Chito', 'Arturo'] as const;
 
 export const LEAD_STATUSES = ['Active', 'On Hold', 'Lost', 'Won'] as const;
 
@@ -43,6 +42,22 @@ export const AVATAR_COLORS = [
   '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6',
   '#ec4899', '#06b6d4', '#f97316', '#84cc16', '#14b8a6',
   '#a855f7', '#e11d48', '#0ea5e9', '#d946ef', '#65a30d',
+];
+
+export interface ProfileConfig {
+  id: string;
+  name: string;
+  role: UserRole;
+  color: string;
+  initials: string;
+}
+
+export const PROFILES: ProfileConfig[] = [
+  { id: 'cd', name: 'CD', role: 'Admin', color: '#DC2626', initials: 'CD' },
+  { id: 'chief', name: 'Chief', role: 'Admin', color: '#111827', initials: 'CH' },
+  { id: 'pablo', name: 'Pablo', role: 'Sales Rep', color: '#2563EB', initials: 'PA' },
+  { id: 'chito', name: 'Chito', role: 'Sales Rep', color: '#16A34A', initials: 'CI' },
+  { id: 'arturo', name: 'Arturo', role: 'Sales Rep', color: '#9333EA', initials: 'AR' },
 ];
 
 export interface User {

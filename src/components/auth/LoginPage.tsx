@@ -1,44 +1,105 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '../../store/AuthContext';
-import type { UserRole } from '../../types';
+import { PROFILES, type ProfileConfig } from '../../types';
+
+type Screen = 'select' | 'pin' | 'register';
 
 export default function LoginPage() {
-  const { login, register } = useAuth();
-  const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState<UserRole>('Sales Rep');
-  const [remember, setRemember] = useState(false);
+  const { loginWithPin, registerWithPin, isProfileRegistered } = useAuth();
+  const [screen, setScreen] = useState<Screen>('select');
+  const [selectedProfile, setSelectedProfile] = useState<ProfileConfig | null>(null);
+  const [pin, setPin] = useState<string[]>(['', '', '', '', '']);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const resetPin = useCallback(() => {
+    setPin(['', '', '', '', '']);
     setError('');
+  }, []);
+
+  const handleProfileClick = (profile: ProfileConfig) => {
+    setSelectedProfile(profile);
+    resetPin();
+    const registered = isProfileRegistered(profile.id);
+    setScreen(registered ? 'pin' : 'register');
+  };
+
+  const handleBack = () => {
+    setScreen('select');
+    setSelectedProfile(null);
+    resetPin();
+  };
+
+  useEffect(() => {
+    if ((screen === 'pin' || screen === 'register') && inputRefs.current[0]) {
+      inputRefs.current[0]?.focus();
+    }
+  }, [screen]);
+
+  const handlePinInput = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return;
+    const digit = value.slice(-1);
+    const newPin = [...pin];
+    newPin[index] = digit;
+    setPin(newPin);
+    setError('');
+
+    if (digit && index < 4) {
+      inputRefs.current[index + 1]?.focus();
+    }
+
+    // Auto-submit when all 5 digits entered
+    if (digit && index === 4 && newPin.every(d => d !== '')) {
+      submitPin(newPin.join(''));
+    }
+  };
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !pin[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 5);
+    if (pasted.length === 5) {
+      const newPin = pasted.split('');
+      setPin(newPin);
+      inputRefs.current[4]?.focus();
+      submitPin(pasted);
+    }
+  };
+
+  const submitPin = async (pinStr: string) => {
+    if (!selectedProfile || loading) return;
     setLoading(true);
 
-    if (mode === 'register') {
-      if (password.length < 4) { setError('Password must be at least 4 characters'); setLoading(false); return; }
-      if (password !== confirmPassword) { setError('Passwords do not match'); setLoading(false); return; }
-      if (!name.trim()) { setError('Name is required'); setLoading(false); return; }
-      const err = await register(name.trim(), email.trim(), password, role);
-      if (err) setError(err);
+    if (screen === 'register') {
+      const err = await registerWithPin(selectedProfile.id, pinStr);
+      if (err) {
+        setError(err);
+        resetPin();
+      }
     } else {
-      const err = await login(email.trim(), password, remember);
-      if (err) setError(err);
+      const err = await loginWithPin(selectedProfile.id, pinStr);
+      if (err === 'not_registered') {
+        setScreen('register');
+        resetPin();
+      } else if (err) {
+        setError(err);
+        resetPin();
+      }
     }
     setLoading(false);
   };
 
-  const inputClass = "w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/25 transition-all";
-
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-4">
-      <div className="w-full max-w-md animate-scaleIn">
+      <div className="w-full max-w-lg animate-scaleIn">
         {/* Logo */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-20 h-20 mb-4">
             <img src="/logo.png" alt="ClawTrack" className="w-20 h-20 object-contain" />
           </div>
@@ -46,80 +107,106 @@ export default function LoginPage() {
           <p className="text-sm text-gray-400 mt-1">CRM Pipeline Manager</p>
         </div>
 
-        {/* Card */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-xl">
-          {/* Toggle */}
-          <div className="flex bg-gray-100 rounded-lg p-1 mb-6">
-            <button
-              onClick={() => { setMode('login'); setError(''); }}
-              className={`flex-1 py-2.5 text-sm font-medium rounded-md transition-all ${mode === 'login' ? 'bg-[#DC2626] text-white shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}
-            >Sign In</button>
-            <button
-              onClick={() => { setMode('register'); setError(''); }}
-              className={`flex-1 py-2.5 text-sm font-medium rounded-md transition-all ${mode === 'register' ? 'bg-[#DC2626] text-white shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}
-            >Register</button>
+        {screen === 'select' && (
+          <div className="animate-fadeIn">
+            <p className="text-center text-sm text-gray-500 mb-6">Select your profile to continue</p>
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
+              {PROFILES.map(profile => {
+                const registered = isProfileRegistered(profile.id);
+                return (
+                  <button
+                    key={profile.id}
+                    onClick={() => handleProfileClick(profile)}
+                    className="group flex flex-col items-center gap-2 p-4 rounded-2xl border border-gray-200 hover:border-gray-300 hover:shadow-lg transition-all duration-200 bg-white"
+                  >
+                    <div
+                      className="w-16 h-16 rounded-full flex items-center justify-center text-white text-lg font-bold shadow-md group-hover:scale-105 transition-transform"
+                      style={{ backgroundColor: profile.color }}
+                    >
+                      {profile.initials}
+                    </div>
+                    <span className="text-sm font-semibold text-gray-900">{profile.name}</span>
+                    <span className="text-[10px] text-gray-400">{profile.role}</span>
+                    {registered ? (
+                      <span className="text-xs text-green-600 font-medium">✅</span>
+                    ) : (
+                      <span className="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Set up</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
+        )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === 'register' && (
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">Full Name</label>
-                <input className={inputClass} value={name} onChange={e => setName(e.target.value)} placeholder="John Doe" required />
-              </div>
-            )}
+        {(screen === 'pin' || screen === 'register') && selectedProfile && (
+          <div className="animate-fadeIn">
+            <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-xl max-w-sm mx-auto">
+              <button
+                onClick={handleBack}
+                className="text-gray-400 hover:text-gray-900 text-sm mb-6 transition-colors"
+              >
+                ← Back
+              </button>
 
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1.5">Email</label>
-              <input className={inputClass} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com" required />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1.5">Password</label>
-              <input className={inputClass} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required />
-            </div>
-
-            {mode === 'register' && (
-              <>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Confirm Password</label>
-                  <input className={inputClass} type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="••••••••" required />
+              <div className="flex flex-col items-center mb-8">
+                <div
+                  className="w-20 h-20 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg mb-3"
+                  style={{ backgroundColor: selectedProfile.color }}
+                >
+                  {selectedProfile.initials}
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Role</label>
-                  <select className={inputClass} value={role} onChange={e => setRole(e.target.value as UserRole)}>
-                    <option value="Sales Rep">Sales Rep</option>
-                    <option value="Manager">Manager</option>
-                    <option value="Admin">Admin</option>
-                  </select>
-                </div>
-              </>
-            )}
-
-            {mode === 'login' && (
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300 bg-gray-50 text-red-600 focus:ring-red-500/25" />
-                <span className="text-xs text-gray-500">Remember me</span>
-              </label>
-            )}
-
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-600 animate-fadeIn">
-                {error}
+                <h2 className="text-lg font-bold text-gray-900">{selectedProfile.name}</h2>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {screen === 'register' ? 'Set your 5-digit PIN' : 'Enter your PIN'}
+                </p>
               </div>
-            )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-[#DC2626] hover:bg-[#B91C1C] text-white font-medium rounded-lg transition-all hover:shadow-lg hover:shadow-red-500/20 disabled:opacity-50"
-            >
-              {loading ? '...' : mode === 'login' ? 'Sign In' : 'Create Account'}
-            </button>
-          </form>
-        </div>
+              {/* PIN Input */}
+              <div className="flex justify-center gap-3 mb-6" onPaste={handlePaste}>
+                {pin.map((digit, i) => (
+                  <input
+                    key={i}
+                    ref={el => { inputRefs.current[i] = el; }}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={e => handlePinInput(i, e.target.value)}
+                    onKeyDown={e => handleKeyDown(i, e)}
+                    className={`w-12 h-14 text-center text-2xl font-bold rounded-xl border-2 transition-all outline-none
+                      ${error
+                        ? 'border-red-400 bg-red-50 text-red-600 animate-shake'
+                        : digit
+                          ? 'border-gray-900 bg-gray-50 text-gray-900'
+                          : 'border-gray-200 bg-gray-50 text-gray-900 focus:border-[#DC2626] focus:ring-2 focus:ring-[#DC2626]/20'
+                      }`}
+                  />
+                ))}
+              </div>
 
-        <p className="text-center text-[10px] text-gray-400 mt-6">
+              {error && (
+                <div className="text-center mb-4">
+                  <p className="text-sm text-red-600 font-medium">{error}</p>
+                </div>
+              )}
+
+              {loading && (
+                <div className="text-center">
+                  <div className="inline-block w-5 h-5 border-2 border-gray-300 border-t-[#DC2626] rounded-full animate-spin" />
+                </div>
+              )}
+
+              <p className="text-center text-[10px] text-gray-400 mt-4">
+                {screen === 'register'
+                  ? 'Choose a memorable 5-digit PIN'
+                  : 'Numbers only · 5 digits'}
+              </p>
+            </div>
+          </div>
+        )}
+
+        <p className="text-center text-[10px] text-gray-400 mt-8">
           Local-only authentication · Data stored in your browser
         </p>
       </div>

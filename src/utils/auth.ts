@@ -1,9 +1,10 @@
 import type { User } from '../types';
-import { AVATAR_COLORS } from '../types';
+import { AVATAR_COLORS, PROFILES } from '../types';
 
 const USERS_KEY = 'clawtrack_users';
 const SESSION_KEY = 'clawtrack_session';
 const REMEMBER_KEY = 'clawtrack_remember';
+const PINS_KEY = 'clawtrack_pins';
 
 // Simple hash for localStorage-based auth (NOT production security)
 export async function hashPassword(password: string): Promise<string> {
@@ -12,6 +13,27 @@ export async function hashPassword(password: string): Promise<string> {
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+export async function hashPin(pin: string): Promise<string> {
+  return hashPassword(pin); // reuse same SHA-256 approach
+}
+
+// PIN storage: { [profileId]: hashedPin }
+export function loadPins(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(PINS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+export function savePins(pins: Record<string, string>) {
+  localStorage.setItem(PINS_KEY, JSON.stringify(pins));
+}
+
+export function isProfileRegistered(profileId: string): boolean {
+  const pins = loadPins();
+  return !!pins[profileId];
 }
 
 export function loadUsers(): User[] {
@@ -61,6 +83,6 @@ export function getInitials(name: string): string {
 }
 
 export function getTeamMemberNames(): string[] {
-  const users = loadUsers();
-  return users.filter(u => u.active).map(u => u.name);
+  // Always return all 5 team members
+  return PROFILES.map(p => p.name);
 }

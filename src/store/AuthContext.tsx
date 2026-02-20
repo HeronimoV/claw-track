@@ -1,16 +1,17 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
-import { v4 as uuidv4 } from 'uuid';
 import type { User, UserRole } from '../types';
+import { PROFILES } from '../types';
 import {
-  loadUsers, saveUsers, hashPassword, setSession, clearSession,
-  getCurrentUser, getNextAvatarColor,
+  loadUsers, saveUsers, hashPin, loadPins, savePins,
+  setSession, clearSession, getCurrentUser,
 } from '../utils/auth';
 
 interface AuthContextValue {
   currentUser: User | null;
   users: User[];
-  login: (email: string, password: string, remember: boolean) => Promise<string | null>;
-  register: (name: string, email: string, password: string, role: UserRole) => Promise<string | null>;
+  loginWithPin: (profileId: string, pin: string) => Promise<string | null>;
+  registerWithPin: (profileId: string, pin: string) => Promise<string | null>;
+  isProfileRegistered: (profileId: string) => boolean;
   logout: () => void;
   updateUser: (user: User) => void;
   updateUserRole: (userId: string, role: UserRole) => void;
@@ -30,48 +31,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Sync users to localStorage when changed
     saveUsers(users);
   }, [users]);
 
-  const login = useCallback(async (email: string, password: string, remember: boolean): Promise<string | null> => {
-    const allUsers = loadUsers();
-    const user = allUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (!user) return 'No account found with that email';
-    if (!user.active) return 'Account has been deactivated';
-    const hash = await hashPassword(password);
-    if (hash !== user.passwordHash) return 'Incorrect password';
-    const updated = { ...user, lastLoginAt: new Date().toISOString() };
-    const newUsers = allUsers.map(u => u.id === updated.id ? updated : u);
-    saveUsers(newUsers);
-    setUsers(newUsers);
-    setSession(user.id, remember);
-    setCurrentUser(updated);
-    return null;
+  const isProfileRegistered = useCallback((profileId: string): boolean => {
+    const pins = loadPins();
+    return !!pins[profileId];
   }, []);
 
-  const register = useCallback(async (name: string, email: string, password: string, role: UserRole): Promise<string | null> => {
-    const allUsers = loadUsers();
-    if (allUsers.some(u => u.email.toLowerCase() === email.toLowerCase())) {
-      return 'An account with that email already exists';
-    }
+  const registerWithPin = useCallback(async (profileId: string, pin: string): Promise<string | null> => {
+    const profile = PROFILES.find(p => p.id === profileId);
+    if (!profile) return 'Profile not found';
+
+    const pins = loadPins();
+    if (pins[profileId]) return 'Profile already registered';
+
+    const hashedPin = await hashPin(pin);
+    pins[profileId] = hashedPin;
+    savePins(pins);
+
+    // Create user record
     const now = new Date().toISOString();
+    const allUsers = loadUsers();
     const user: User = {
-      id: uuidv4(),
-      name,
-      email: email.toLowerCase(),
-      passwordHash: await hashPassword(password),
-      role,
-      avatarColor: getNextAvatarColor(),
+      id: profileId,
+      name: profile.name,
+      email: `${profileId}@clawtrack.local`,
+      passwordHash: hashedPin,
+      role: profile.role,
+      avatarColor: profile.color,
       active: true,
       createdAt: now,
       lastLoginAt: now,
     };
-    const newUsers = [...allUsers, user];
+    const newUsers = [...allUsers.filter(u => u.id !== profileId), user];
     saveUsers(newUsers);
     setUsers(newUsers);
-    setSession(user.id, false);
+    setSession(profileId, true);
     setCurrentUser(user);
+    return null;
+  }, []);
+
+  const loginWithPin = useCallback(async (profileId: string, pin: string): Promise<string | null> => {
+    const pins = loadPins();
+    if (!pins[profileId]) return 'not_registered';
+
+    const hashedPin = await hashPin(pin);
+    if (hashedPin !== pins[profileId]) return 'Incorrect PIN';
+
+    const allUsers = loadUsers();
+    const user = allUsers.find(u => u.id === profileId);
+    if (!user) return 'User data not found';
+    if (!user.active) return 'Account has been deactivated';
+
+    const updated = { ...user, lastLoginAt: new Date().toISOString() };
+    const newUsers = allUsers.map(u => u.id === updated.id ? updated : u);
+    saveUsers(newUsers);
+    setUsers(newUsers);
+    setSession(profileId, true);
+    setCurrentUser(updated);
     return null;
   }, []);
 
@@ -114,7 +132,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ currentUser, users, login, register, logout, updateUser, updateUserRole, deactivateUser, reactivateUser, refreshUsers }}>
+    <AuthContext.Provider value={{
+      currentUser, users, loginWithPin, registerWithPin, isProfileRegistered,
+      logout, updateUser, updateUserRole, deactivateUser, reactivateUser, refreshUsers
+    }}>
       {children}
     </AuthContext.Provider>
   );
