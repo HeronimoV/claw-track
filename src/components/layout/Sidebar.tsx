@@ -13,6 +13,7 @@ export default function Sidebar() {
     { key: 'dashboard' as const, label: 'Dashboard', icon: '📈' },
     { key: 'pipeline' as const, label: 'Pipeline', icon: '📊' },
     { key: 'list' as const, label: 'All Leads', icon: '📋' },
+    { key: 'tickets' as const, label: 'HelpDesk', icon: '🎫' },
     ...(currentUser?.role === 'Admin' ? [{ key: 'team' as const, label: 'Team', icon: '👥' }] : []),
   ];
 
