@@ -1,18 +1,18 @@
 import { useApp } from '../../store/AppContext';
 import { useAuth } from '../../store/AuthContext';
-import { isOverdue, isDueToday } from '../../utils/helpers';
+import { isCallOverdue, isCallToday } from '../../utils/helpers';
 import { getInitials } from '../../utils/auth';
 
 export default function Sidebar() {
   const { state, dispatch } = useApp();
   const { currentUser, logout } = useAuth();
-  const overdueCount = state.leads.filter(l => isOverdue(l) && l.status === 'Active').length;
-  const dueTodayCount = state.leads.filter(l => isDueToday(l) && l.status === 'Active').length;
+  const overdueCount = state.leads.filter(l => isCallOverdue(l)).length;
+  const callsTodayCount = state.leads.filter(l => isCallToday(l)).length;
 
   const NAV_ITEMS = [
+    { key: 'dashboard' as const, label: 'Dashboard', icon: '📈' },
     { key: 'pipeline' as const, label: 'Pipeline', icon: '📊' },
     { key: 'list' as const, label: 'All Leads', icon: '📋' },
-    { key: 'dashboard' as const, label: 'Dashboard', icon: '📈' },
     ...(currentUser?.role === 'Admin' ? [{ key: 'team' as const, label: 'Team', icon: '👥' }] : []),
   ];
 
@@ -23,7 +23,7 @@ export default function Sidebar() {
           <img src="/logo.png" alt="ClawTrack" className="w-8 h-8 object-contain" />
           <div>
             <h1 className="text-base font-bold text-white tracking-tight">ClawTrack</h1>
-            <p className="text-[10px] text-gray-500 uppercase tracking-widest">CRM Pipeline</p>
+            <p className="text-[10px] text-gray-500 uppercase tracking-widest">Sales Command Center</p>
           </div>
         </div>
       </div>
@@ -49,13 +49,13 @@ export default function Sidebar() {
         {overdueCount > 0 && (
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/15 text-red-400 text-xs font-medium">
             <span>⚠️</span>
-            {overdueCount} overdue follow-up{overdueCount !== 1 ? 's' : ''}
+            {overdueCount} overdue call{overdueCount !== 1 ? 's' : ''}
           </div>
         )}
-        {dueTodayCount > 0 && (
+        {callsTodayCount > 0 && (
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/15 text-amber-400 text-xs font-medium">
-            <span>📌</span>
-            {dueTodayCount} due today
+            <span>📞</span>
+            {callsTodayCount} call{callsTodayCount !== 1 ? 's' : ''} today
           </div>
         )}
         <div className="px-3 py-2 text-gray-500 text-[10px]">
@@ -63,7 +63,6 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* User section */}
       {currentUser && (
         <div className="p-3 border-t border-white/10">
           <button
@@ -78,10 +77,7 @@ export default function Sidebar() {
               <p className="text-[10px] text-gray-500">{currentUser.role}</p>
             </div>
           </button>
-          <button
-            onClick={logout}
-            className="w-full mt-1 px-3 py-2 text-xs text-gray-500 hover:text-red-400 hover:bg-white/5 rounded-lg transition-all text-left"
-          >
+          <button onClick={logout} className="w-full mt-1 px-3 py-2 text-xs text-gray-500 hover:text-red-400 hover:bg-white/5 rounded-lg transition-all text-left">
             🚪 Sign Out
           </button>
         </div>

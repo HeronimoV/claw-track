@@ -1,25 +1,33 @@
 import { useState } from 'react';
 import { useApp } from '../../store/AppContext';
 import { PIPELINE_STAGES } from '../../types';
-import { filterLeads, formatCurrency, formatDate, isOverdue } from '../../utils/helpers';
+import { filterLeads, formatCurrency, formatDate, isCallOverdue, daysInStage } from '../../utils/helpers';
 import { exportCSV } from '../../utils/csv';
 import FilterBar from '../common/FilterBar';
 import type { Lead } from '../../types';
 
-type SortKey = 'companyName' | 'contactName' | 'industry' | 'dealValue' | 'leadScore' | 'pipelineStage' | 'createdDate' | 'nextFollowUpDate';
+type SortKey = 'companyName' | 'industry' | 'pipelineStage' | 'dealValue' | 'daysInStage' | 'scheduledCallDate';
 
 export default function ListView() {
   const { state, dispatch } = useApp();
-  const [sortKey, setSortKey] = useState<SortKey>('createdDate');
-  const [sortAsc, setSortAsc] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>('companyName');
+  const [sortAsc, setSortAsc] = useState(true);
 
   const filtered = filterLeads(state.leads, state.filters);
   const sorted = [...filtered].sort((a, b) => {
-    let va = a[sortKey] as string | number, vb = b[sortKey] as string | number;
+    let va: string | number, vb: string | number;
+    if (sortKey === 'daysInStage') {
+      va = daysInStage(a);
+      vb = daysInStage(b);
+    } else if (sortKey === 'dealValue') {
+      va = a.dealValue;
+      vb = b.dealValue;
+    } else {
+      va = String((a as unknown as Record<string, unknown>)[sortKey] || '').toLowerCase();
+      vb = String((b as unknown as Record<string, unknown>)[sortKey] || '').toLowerCase();
+    }
     if (typeof va === 'number' && typeof vb === 'number') return sortAsc ? va - vb : vb - va;
-    va = String(va || '').toLowerCase();
-    vb = String(vb || '').toLowerCase();
-    return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+    return sortAsc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
   });
 
   const toggleSort = (key: SortKey) => {
@@ -63,18 +71,17 @@ export default function ListView() {
           <thead className="bg-surface-1 sticky top-0 z-10">
             <tr>
               <SortHeader label="Company" field="companyName" />
-              <SortHeader label="Contact" field="contactName" />
               <SortHeader label="Industry" field="industry" />
               <SortHeader label="Stage" field="pipelineStage" />
               <SortHeader label="Deal Value" field="dealValue" />
-              <SortHeader label="Score" field="leadScore" />
-              <SortHeader label="Follow-Up" field="nextFollowUpDate" />
-              <SortHeader label="Created" field="createdDate" />
+              <SortHeader label="Days in Stage" field="daysInStage" />
+              <SortHeader label="Scheduled Call" field="scheduledCallDate" />
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {sorted.map(lead => {
-              const overdue = isOverdue(lead);
+              const overdue = isCallOverdue(lead);
+              const days = daysInStage(lead);
               return (
                 <tr
                   key={lead.id}
@@ -83,11 +90,7 @@ export default function ListView() {
                 >
                   <td className="px-4 py-3">
                     <div className="text-sm font-medium text-text-primary">{lead.companyName || '—'}</div>
-                    {lead.city && <div className="text-[10px] text-text-tertiary">{lead.city}</div>}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="text-sm text-text-primary">{lead.contactName || '—'}</div>
-                    {lead.title && <div className="text-[10px] text-text-tertiary">{lead.title}</div>}
+                    <div className="text-[10px] text-text-tertiary">{lead.pointOfContact}{lead.location ? ` · ${lead.location}` : ''}</div>
                   </td>
                   <td className="px-4 py-3 text-sm text-text-secondary">{lead.industry || '—'}</td>
                   <td className="px-4 py-3">
@@ -95,14 +98,12 @@ export default function ListView() {
                   </td>
                   <td className="px-4 py-3 text-sm font-medium text-brand">{lead.dealValue ? formatCurrency(lead.dealValue) : '—'}</td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs font-bold ${
-                      lead.leadScore >= 70 ? 'text-success' : lead.leadScore >= 40 ? 'text-warning' : 'text-text-tertiary'
-                    }`}>{lead.leadScore}</span>
+                    <span className={`text-xs font-medium ${days > 14 ? 'text-warning' : 'text-text-secondary'}`}>{days}d</span>
                   </td>
                   <td className={`px-4 py-3 text-xs ${overdue ? 'text-danger font-medium' : 'text-text-secondary'}`}>
-                    {formatDate(lead.nextFollowUpDate)}
+                    {lead.scheduledCallDate ? formatDate(lead.scheduledCallDate) : '—'}
+                    {overdue && ' ⚠️'}
                   </td>
-                  <td className="px-4 py-3 text-xs text-text-tertiary">{formatDate(lead.createdDate)}</td>
                 </tr>
               );
             })}

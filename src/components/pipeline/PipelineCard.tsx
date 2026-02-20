@@ -1,7 +1,7 @@
 import { useDraggable } from '@dnd-kit/core';
 import type { Lead, AppSettings } from '../../types';
 import { useApp } from '../../store/AppContext';
-import { daysInStage, formatCurrency, formatDateShort, isOverdue } from '../../utils/helpers';
+import { daysInStage, formatCurrency, formatDateShort, isCallOverdue } from '../../utils/helpers';
 
 interface Props {
   lead: Lead;
@@ -13,7 +13,7 @@ export default function PipelineCard({ lead, isDragging, settings }: Props) {
   const { dispatch } = useApp();
   const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: lead.id });
   const days = daysInStage(lead);
-  const overdue = isOverdue(lead);
+  const overdue = isCallOverdue(lead);
   const stale = days >= settings.staleThresholdDays;
 
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
@@ -27,39 +27,23 @@ export default function PipelineCard({ lead, isDragging, settings }: Props) {
       onClick={() => dispatch({ type: 'SELECT_LEAD', id: lead.id })}
       className={`p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-all hover:border-red-300 hover:shadow-md hover:shadow-red-500/5 ${
         isDragging ? 'opacity-80 shadow-xl shadow-red-500/10 scale-105' : ''
-      } ${overdue ? 'border-danger/40 bg-red-50' : stale ? 'border-warning/30 bg-amber-50' : 'border-border bg-white hover:bg-white'}`}
+      } ${overdue ? 'border-danger/40 bg-red-50 ring-1 ring-red-300' : stale ? 'border-warning/30 bg-amber-50' : 'border-border bg-white hover:bg-white'}`}
     >
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <h4 className="text-sm font-medium text-text-primary truncate">{lead.companyName || 'Untitled'}</h4>
-        {lead.leadScore > 0 && (
-          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
-            lead.leadScore >= 70 ? 'bg-success/20 text-success' :
-            lead.leadScore >= 40 ? 'bg-warning/20 text-warning' :
-            'bg-surface-4 text-text-tertiary'
-          }`}>
-            {lead.leadScore}
-          </span>
-        )}
       </div>
-      <p className="text-xs text-text-secondary truncate">{lead.contactName}</p>
-      {lead.industry && <p className="text-[10px] text-text-tertiary mt-1">{lead.industry}</p>}
+      <p className="text-xs text-text-secondary truncate">{lead.pointOfContact}</p>
       <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/50">
         <span className="text-xs font-medium text-brand">{lead.dealValue ? formatCurrency(lead.dealValue) : '—'}</span>
         <div className="flex items-center gap-2">
-          {overdue && <span className="text-[10px] text-danger font-medium">Overdue</span>}
+          {overdue && <span className="text-[10px] text-danger font-medium">📞 Overdue</span>}
           <span className={`text-[10px] ${stale ? 'text-warning' : 'text-text-tertiary'}`}>{days}d</span>
         </div>
       </div>
-      {lead.nextFollowUpDate && (
-        <p className="text-[10px] text-text-tertiary mt-1">Follow-up: {formatDateShort(lead.nextFollowUpDate)}</p>
-      )}
-      {lead.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-2">
-          {lead.tags.slice(0, 3).map(tag => (
-            <span key={tag} className="text-[9px] bg-brand/10 text-brand-light px-1.5 py-0.5 rounded">{tag}</span>
-          ))}
-          {lead.tags.length > 3 && <span className="text-[9px] text-text-tertiary">+{lead.tags.length - 3}</span>}
-        </div>
+      {lead.scheduledCallDate && (
+        <p className={`text-[10px] mt-1 ${overdue ? 'text-danger font-medium' : 'text-text-tertiary'}`}>
+          📞 {formatDateShort(lead.scheduledCallDate)}
+        </p>
       )}
     </div>
   );

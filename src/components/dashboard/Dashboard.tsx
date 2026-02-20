@@ -1,213 +1,141 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useApp } from '../../store/AppContext';
 import { useAuth } from '../../store/AuthContext';
 import { PIPELINE_STAGES } from '../../types';
-import { formatCurrency, formatDate, isOverdue, isDueToday, daysBetween } from '../../utils/helpers';
+import type { Lead } from '../../types';
+import { formatCurrency, formatDate, isCallOverdue, isCallToday } from '../../utils/helpers';
 import { getInitials } from '../../utils/auth';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
-const COLORS = ['#DC2626', '#6B7280', '#f59e0b', '#10b981', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#84cc16'];
+type CalendarView = 'day' | 'week' | 'month';
 
 export default function Dashboard() {
   const { state, dispatch } = useApp();
   const { users } = useAuth();
-  const [activityFilter, setActivityFilter] = useState('');
+  const [calendarView, setCalendarView] = useState<CalendarView>('day');
+  const [calendarDate, setCalendarDate] = useState(new Date());
   const leads = state.leads;
-  const active = leads.filter(l => l.status === 'Active' || l.status === 'On Hold');
-  const closedWon = leads.filter(l => l.pipelineStage === 'closed_won');
-  const closedLost = leads.filter(l => l.pipelineStage === 'closed_lost');
-  const totalClosed = closedWon.length + closedLost.length;
-  const winRate = totalClosed > 0 ? Math.round((closedWon.length / totalClosed) * 100) : 0;
-  const pipelineValue = active.reduce((sum, l) => sum + l.dealValue, 0);
-  const revenueWon = closedWon.reduce((sum, l) => sum + l.dealValue, 0);
-  const overdueLeads = leads.filter(l => isOverdue(l) && l.status === 'Active');
-  const dueTodayLeads = leads.filter(l => isDueToday(l) && l.status === 'Active');
 
+  // Metrics
+  const totalLeads = leads.length;
+  const pipelineValue = leads.reduce((sum, l) => sum + l.dealValue, 0);
+  const callsToday = leads.filter(l => isCallToday(l));
+  const overdueCallLeads = leads.filter(l => isCallOverdue(l));
   const now = new Date();
-  const weekAgo = new Date(now.getTime() - 7 * 86400000).toISOString();
-  const monthAgo = new Date(now.getTime() - 30 * 86400000).toISOString();
-  const addedThisWeek = leads.filter(l => l.createdDate >= weekAgo).length;
-  const addedThisMonth = leads.filter(l => l.createdDate >= monthAgo).length;
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const closedWonThisMonth = leads.filter(l => l.pipelineStage === 'closed_won' && l.stageEnteredDate >= monthStart);
+  const closedWonValue = closedWonThisMonth.reduce((s, l) => s + l.dealValue, 0);
 
-  const avgDaysToClose = closedWon.length > 0
-    ? Math.round(closedWon.reduce((sum, l) => sum + daysBetween(l.createdDate, l.stageEnteredDate), 0) / closedWon.length)
-    : 0;
+  // Activity feed
+  const allActivities = useMemo(() =>
+    leads.flatMap(l => l.activities.map(a => ({ ...a, companyName: l.companyName })))
+      .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+      .slice(0, 50),
+    [leads]
+  );
 
-  // Charts data
-  const stageData = PIPELINE_STAGES.map(s => ({
-    name: s.label.replace(' ', '\n'),
-    count: leads.filter(l => l.pipelineStage === s.key).length,
-  }));
-
-  const industryMap: Record<string, number> = {};
-  leads.forEach(l => { if (l.industry) industryMap[l.industry] = (industryMap[l.industry] || 0) + 1; });
-  const industryData = Object.entries(industryMap).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-
-  const sourceMap: Record<string, number> = {};
-  leads.forEach(l => { if (l.leadSource) sourceMap[l.leadSource] = (sourceMap[l.leadSource] || 0) + 1; });
-  const sourceData = Object.entries(sourceMap).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-
-  // Team performance data from actual registered users
+  // Active members
   const activeMembers = users.filter(u => u.active);
+
+  // Team breakdown
   const teamData = activeMembers.map(m => {
     const memberLeads = leads.filter(l => l.assignedTo === m.name);
-    const callsThisWeek = memberLeads.flatMap(l => l.activities).filter(a => a.type === 'Call' && a.timestamp >= weekAgo).length;
-    const callsThisMonth = memberLeads.flatMap(l => l.activities).filter(a => a.type === 'Call' && a.timestamp >= monthAgo).length;
-    const won = memberLeads.filter(l => l.pipelineStage === 'closed_won');
-    const lost = memberLeads.filter(l => l.pipelineStage === 'closed_lost');
-    const totalClosedMember = won.length + lost.length;
-    const activitiesCount = memberLeads.flatMap(l => l.activities).length;
-    return {
-      name: m.name,
-      color: m.avatarColor,
-      assigned: memberLeads.length,
-      won: won.length,
-      pipeline: memberLeads.filter(l => l.status === 'Active').reduce((s, l) => s + l.dealValue, 0),
-      callsWeek: callsThisWeek,
-      callsMonth: callsThisMonth,
-      activities: activitiesCount,
-      conversionRate: totalClosedMember > 0 ? Math.round((won.length / totalClosedMember) * 100) : 0,
-    };
+    return { name: m.name, color: m.avatarColor, count: memberLeads.length, value: memberLeads.reduce((s, l) => s + l.dealValue, 0) };
   });
 
-  // Global activity feed
-  const allActivities = leads.flatMap(l =>
-    l.activities.map(a => ({ ...a, companyName: l.companyName }))
-  ).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-
-  const filteredActivities = activityFilter
-    ? allActivities.filter(a => a.userName === activityFilter)
-    : allActivities;
-
-  // Conversion rates
-  const conversionData = PIPELINE_STAGES.slice(0, -1).map((s, i) => {
-    const current = leads.filter(l => l.pipelineStage === s.key).length;
-    const nextStages = PIPELINE_STAGES.slice(i + 1);
-    const movedForward = leads.filter(l => nextStages.some(ns => ns.key === l.pipelineStage)).length;
-    const total = current + movedForward;
-    return { from: s.label, rate: total > 0 ? Math.round((movedForward / total) * 100) : 0 };
-  });
-
-  const StatCard = ({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) => (
-    <div className="bg-surface-1 border border-border rounded-xl p-4 hover:border-brand/20 transition-all">
+  const StatCard = ({ label, value, sub, color, danger }: { label: string; value: string | number; sub?: string; color?: string; danger?: boolean }) => (
+    <div className={`border rounded-xl p-4 hover:shadow-md transition-all ${danger ? 'bg-red-50 border-red-200' : 'bg-surface-1 border-border hover:border-brand/20'}`}>
       <p className="text-[10px] text-text-tertiary uppercase tracking-wider">{label}</p>
-      <p className={`text-2xl font-bold mt-1 ${color || 'text-text-primary'}`}>{value}</p>
+      <p className={`text-2xl font-bold mt-1 ${danger ? 'text-red-600' : color || 'text-text-primary'}`}>{value}</p>
       {sub && <p className="text-[10px] text-text-tertiary mt-1">{sub}</p>}
     </div>
   );
 
-  const CustomTooltip = ({ active: a, payload }: { active?: boolean; payload?: Array<{ name: string; value: number }> }) => {
-    if (!a || !payload?.length) return null;
-    return (
-      <div className="bg-white border border-border rounded-lg px-3 py-2 text-xs shadow-lg">
-        <p className="text-text-primary font-medium">{payload[0].name}: {payload[0].value}</p>
-      </div>
-    );
-  };
-
   return (
     <div className="h-full overflow-y-auto p-6 space-y-6">
-      {/* Due today / overdue */}
-      {(overdueLeads.length > 0 || dueTodayLeads.length > 0) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {overdueLeads.length > 0 && (
-            <div className="bg-danger/5 border border-danger/20 rounded-xl p-4">
-              <h3 className="text-sm font-semibold text-danger mb-2">⚠️ Overdue Follow-Ups ({overdueLeads.length})</h3>
-              <div className="space-y-1.5 max-h-32 overflow-y-auto">
-                {overdueLeads.map(l => (
-                  <button key={l.id} onClick={() => dispatch({ type: 'SELECT_LEAD', id: l.id })}
-                    className="block w-full text-left text-xs text-text-secondary hover:text-text-primary transition-colors">
-                    <span className="font-medium">{l.companyName}</span> — {l.contactName}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          {dueTodayLeads.length > 0 && (
-            <div className="bg-warning/5 border border-warning/20 rounded-xl p-4">
-              <h3 className="text-sm font-semibold text-warning mb-2">📌 Due Today ({dueTodayLeads.length})</h3>
-              <div className="space-y-1.5 max-h-32 overflow-y-auto">
-                {dueTodayLeads.map(l => (
-                  <button key={l.id} onClick={() => dispatch({ type: 'SELECT_LEAD', id: l.id })}
-                    className="block w-full text-left text-xs text-text-secondary hover:text-text-primary transition-colors">
-                    <span className="font-medium">{l.companyName}</span> — {l.contactName}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
-        <StatCard label="Total Leads" value={leads.length} sub={`${addedThisWeek} this week`} />
-        <StatCard label="Active Pipeline" value={active.length} />
+      {/* Top Row: Metrics */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <StatCard label="Total Leads" value={totalLeads} />
         <StatCard label="Pipeline Value" value={formatCurrency(pipelineValue)} color="text-brand" />
-        <StatCard label="Revenue Won" value={formatCurrency(revenueWon)} color="text-success" />
-        <StatCard label="Win Rate" value={`${winRate}%`} sub={`${closedWon.length}W / ${closedLost.length}L`} />
-        <StatCard label="Avg Days to Close" value={avgDaysToClose} />
-        <StatCard label="Added This Month" value={addedThisMonth} />
-        <StatCard label="Overdue" value={overdueLeads.length} color={overdueLeads.length > 0 ? 'text-danger' : undefined} />
+        <StatCard label="Calls Today" value={callsToday.length} sub={callsToday.map(l => l.companyName).join(', ') || 'None'} />
+        <StatCard label="Overdue Calls" value={overdueCallLeads.length} danger={overdueCallLeads.length > 0} />
+        <StatCard label="Closed Won (Month)" value={closedWonThisMonth.length} sub={formatCurrency(closedWonValue)} color="text-green-600" />
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Leads by stage */}
-        <div className="bg-surface-1 border border-border rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-text-primary mb-4">Leads by Stage</h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={stageData}>
-              <XAxis dataKey="name" tick={{ fontSize: 9, fill: '#6B7280' }} interval={0} />
-              <YAxis tick={{ fontSize: 10, fill: '#6B7280' }} allowDecimals={false} />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="count" fill="#DC2626" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Leads by industry */}
-        <div className="bg-surface-1 border border-border rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-text-primary mb-4">Leads by Industry</h3>
-          {industryData.length > 0 ? (
-            <div className="flex items-center gap-4">
-              <ResponsiveContainer width="50%" height={200}>
-                <PieChart>
-                  <Pie data={industryData} dataKey="value" cx="50%" cy="50%" outerRadius={80} innerRadius={40}>
-                    {industryData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip content={<CustomTooltip />} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="space-y-1.5 flex-1">
-                {industryData.map((d, i) => (
-                  <div key={d.name} className="flex items-center gap-2 text-xs">
-                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                    <span className="text-text-secondary truncate">{d.name}</span>
-                    <span className="text-text-tertiary ml-auto">{d.value}</span>
-                  </div>
-                ))}
-              </div>
+      {/* Second Row: Call Calendar */}
+      <div className="bg-surface-1 border border-border rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-text-primary">📞 Call Calendar</h3>
+          <div className="flex items-center gap-2">
+            <div className="flex bg-surface-2 rounded-lg overflow-hidden border border-border">
+              {(['day', 'week', 'month'] as CalendarView[]).map(v => (
+                <button key={v} onClick={() => setCalendarView(v)}
+                  className={`px-3 py-1.5 text-xs font-medium transition-all ${calendarView === v ? 'bg-brand text-white' : 'text-text-secondary hover:text-text-primary'}`}>
+                  {v.charAt(0).toUpperCase() + v.slice(1)}
+                </button>
+              ))}
             </div>
-          ) : <p className="text-xs text-text-tertiary">No data yet</p>}
+          </div>
+        </div>
+        {calendarView === 'day' && <DayView leads={leads} onSelectLead={(id) => dispatch({ type: 'SELECT_LEAD', id })} />}
+        {calendarView === 'week' && <WeekView leads={leads} onSelectLead={(id) => dispatch({ type: 'SELECT_LEAD', id })} date={calendarDate} setDate={setCalendarDate} />}
+        {calendarView === 'month' && <MonthView leads={leads} date={calendarDate} setDate={setCalendarDate} />}
+      </div>
+
+      {/* Third Row: Pipeline Overview */}
+      <div className="bg-surface-1 border border-border rounded-xl p-5">
+        <h3 className="text-sm font-semibold text-text-primary mb-4">Pipeline Overview</h3>
+        <div className="flex gap-1 items-stretch">
+          {PIPELINE_STAGES.map((stage, i) => {
+            const stageLeads = leads.filter(l => l.pipelineStage === stage.key);
+            const stageValue = stageLeads.reduce((s, l) => s + l.dealValue, 0);
+            return (
+              <button key={stage.key}
+                onClick={() => { dispatch({ type: 'SET_FILTERS', filters: { ...state.filters, stage: stage.key } }); dispatch({ type: 'SET_VIEW', view: 'list' }); }}
+                className="flex-1 rounded-lg p-3 text-center transition-all hover:scale-[1.02] hover:shadow-md"
+                style={{ backgroundColor: stage.color + '15', borderLeft: i === 0 ? 'none' : `3px solid ${stage.color}30` }}>
+                <p className="text-[10px] font-medium truncate" style={{ color: stage.color }}>{stage.label}</p>
+                <p className="text-xl font-bold mt-1" style={{ color: stage.color }}>{stageLeads.length}</p>
+                <p className="text-[10px] text-text-tertiary">{formatCurrency(stageValue)}</p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Fourth Row: Team Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Activity Feed */}
+        <div className="bg-surface-1 border border-border rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-text-primary mb-4">Recent Activity</h3>
+          <div className="space-y-2.5 max-h-80 overflow-y-auto">
+            {allActivities.map(a => {
+              const user = users.find(u => u.name === a.userName);
+              return (
+                <div key={a.id} className="flex items-start gap-3 py-1.5">
+                  {user ? (
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[8px] font-bold shrink-0 mt-0.5" style={{ backgroundColor: user.avatarColor }}>
+                      {getInitials(user.name)}
+                    </div>
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-surface-3 flex items-center justify-center text-[10px] shrink-0 mt-0.5">📝</div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-text-primary">
+                      {a.description}
+                      {a.companyName && <span className="text-text-secondary"> — {a.companyName}</span>}
+                    </p>
+                    <p className="text-[10px] text-text-tertiary mt-0.5">{a.type} · {formatDate(a.timestamp)}</p>
+                  </div>
+                </div>
+              );
+            })}
+            {allActivities.length === 0 && <p className="text-xs text-text-tertiary">No activity yet</p>}
+          </div>
         </div>
 
-        {/* Leads by source */}
+        {/* Team Breakdown */}
         <div className="bg-surface-1 border border-border rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-text-primary mb-4">Leads by Source</h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={sourceData} layout="vertical">
-              <XAxis type="number" tick={{ fontSize: 10, fill: '#6B7280' }} allowDecimals={false} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#6B7280' }} width={100} />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="value" fill="#DC2626" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Team performance */}
-        <div className="bg-surface-1 border border-border rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-text-primary mb-4">Team Performance</h3>
+          <h3 className="text-sm font-semibold text-text-primary mb-4">Leads by Team Member</h3>
           {teamData.length > 0 ? (
             <div className="space-y-3">
               {teamData.map(m => (
@@ -218,10 +146,10 @@ export default function Dashboard() {
                   <div className="flex-1">
                     <div className="flex justify-between text-xs">
                       <span className="text-text-primary font-medium">{m.name}</span>
-                      <span className="text-text-tertiary">{m.assigned} leads · {m.won} won</span>
+                      <span className="text-text-tertiary">{m.count} leads · {formatCurrency(m.value)}</span>
                     </div>
                     <div className="h-1.5 bg-surface-3 rounded-full mt-1.5 overflow-hidden">
-                      <div className="h-full bg-brand rounded-full transition-all" style={{ width: `${Math.min(100, (m.assigned / Math.max(leads.length, 1)) * 100)}%` }} />
+                      <div className="h-full bg-brand rounded-full transition-all" style={{ width: `${Math.min(100, (m.count / Math.max(totalLeads, 1)) * 100)}%` }} />
                     </div>
                   </div>
                 </div>
@@ -229,112 +157,191 @@ export default function Dashboard() {
             </div>
           ) : <p className="text-xs text-text-tertiary">No team members registered yet</p>}
         </div>
+      </div>
+    </div>
+  );
+}
 
-        {/* Detailed Team Stats */}
-        {teamData.length > 0 && (
-          <div className="bg-surface-1 border border-border rounded-xl p-5 col-span-1 lg:col-span-2">
-            <h3 className="text-sm font-semibold text-text-primary mb-4">Team Member Breakdown</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2 text-text-tertiary font-medium">Member</th>
-                    <th className="text-right py-2 text-text-tertiary font-medium">Leads</th>
-                    <th className="text-right py-2 text-text-tertiary font-medium">Calls (Wk)</th>
-                    <th className="text-right py-2 text-text-tertiary font-medium">Calls (Mo)</th>
-                    <th className="text-right py-2 text-text-tertiary font-medium">Won</th>
-                    <th className="text-right py-2 text-text-tertiary font-medium">Pipeline $</th>
-                    <th className="text-right py-2 text-text-tertiary font-medium">Activities</th>
-                    <th className="text-right py-2 text-text-tertiary font-medium">Win %</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {teamData.map(m => (
-                    <tr key={m.name} className="border-b border-border/50">
-                      <td className="py-2.5">
-                        <div className="flex items-center gap-2">
-                          <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[8px] font-bold" style={{ backgroundColor: m.color }}>
-                            {getInitials(m.name)}
-                          </div>
-                          <span className="text-text-primary">{m.name}</span>
-                        </div>
-                      </td>
-                      <td className="text-right text-text-secondary py-2.5">{m.assigned}</td>
-                      <td className="text-right text-text-secondary py-2.5">{m.callsWeek}</td>
-                      <td className="text-right text-text-secondary py-2.5">{m.callsMonth}</td>
-                      <td className="text-right text-success py-2.5 font-medium">{m.won}</td>
-                      <td className="text-right text-brand py-2.5">{formatCurrency(m.pipeline)}</td>
-                      <td className="text-right text-text-secondary py-2.5">{m.activities}</td>
-                      <td className="text-right py-2.5">
-                        <span className={m.conversionRate >= 50 ? 'text-success' : m.conversionRate >= 25 ? 'text-warning' : 'text-text-tertiary'}>
-                          {m.conversionRate}%
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+/* ===== Calendar Sub-Components ===== */
 
-        {/* Conversion rates */}
-        <div className="bg-surface-1 border border-border rounded-xl p-5 col-span-1 lg:col-span-2">
-          <h3 className="text-sm font-semibold text-text-primary mb-4">Stage Conversion Rates</h3>
-          <div className="flex items-center gap-2 overflow-x-auto">
-            {conversionData.map((d, i) => (
-              <div key={d.from} className="flex items-center gap-2 shrink-0">
-                <div className="text-center">
-                  <p className="text-[10px] text-text-tertiary truncate max-w-[80px]">{d.from}</p>
-                  <p className={`text-sm font-bold mt-1 ${d.rate >= 50 ? 'text-success' : d.rate >= 25 ? 'text-warning' : 'text-text-secondary'}`}>{d.rate}%</p>
-                </div>
-                {i < conversionData.length - 1 && <span className="text-text-tertiary text-xs">→</span>}
-              </div>
+function DayView({ leads, onSelectLead }: { leads: Lead[]; onSelectLead: (id: string) => void }) {
+  const today = new Date().toISOString().split('T')[0];
+  const overdueLeads = leads.filter(l => {
+    if (!l.scheduledCallDate || l.callCompleted) return false;
+    const d = l.scheduledCallDate.split('T')[0];
+    return d < today;
+  });
+  const todayLeads = leads.filter(l => {
+    if (!l.scheduledCallDate || l.callCompleted) return false;
+    return l.scheduledCallDate.split('T')[0] === today;
+  });
+
+  return (
+    <div>
+      <p className="text-xs text-text-secondary mb-3">
+        {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+        <span className="ml-2 bg-brand/10 text-brand text-[10px] font-medium px-2 py-0.5 rounded-full">{todayLeads.length} calls today</span>
+      </p>
+
+      {overdueLeads.length > 0 && (
+        <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3">
+          <p className="text-xs font-semibold text-red-700 mb-2">⚠️ Overdue ({overdueLeads.length})</p>
+          <div className="space-y-2">
+            {overdueLeads.map(l => (
+              <CallEntry key={l.id} lead={l} onSelectLead={onSelectLead} overdue />
             ))}
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Activity Feed */}
-      <div className="bg-surface-1 border border-border rounded-xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-text-primary">Recent Activity</h3>
-          <select
-            value={activityFilter}
-            onChange={e => setActivityFilter(e.target.value)}
-            className="bg-surface-2 border border-border rounded-lg px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-brand/50 transition-all"
-          >
-            <option value="">All Members</option>
-            {activeMembers.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
-          </select>
+      {todayLeads.length > 0 ? (
+        <div className="space-y-2">
+          {todayLeads.map(l => (
+            <CallEntry key={l.id} lead={l} onSelectLead={onSelectLead} />
+          ))}
         </div>
-        <div className="space-y-2.5 max-h-80 overflow-y-auto">
-          {filteredActivities.slice(0, 50).map(a => {
-            const user = users.find(u => u.name === a.userName);
-            return (
-              <div key={a.id} className="flex items-start gap-3 py-1.5">
-                {user ? (
-                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[8px] font-bold shrink-0 mt-0.5" style={{ backgroundColor: user.avatarColor }}>
-                    {getInitials(user.name)}
-                  </div>
-                ) : (
-                  <div className="w-6 h-6 rounded-full bg-surface-3 flex items-center justify-center text-[10px] shrink-0 mt-0.5">
-                    {a.type === 'Call' ? '📞' : a.type === 'Email' ? '📧' : a.type === 'Meeting' ? '🤝' :
-                     a.type === 'Stage Change' ? '📊' : a.type === 'Follow-Up' ? '📌' : '📝'}
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-text-primary">
-                    {a.description}
-                    {a.companyName && <span className="text-text-secondary"> — {a.companyName}</span>}
-                  </p>
-                  <p className="text-[10px] text-text-tertiary mt-0.5">{a.type} · {formatDate(a.timestamp)}</p>
-                </div>
+      ) : (
+        <p className="text-xs text-text-tertiary py-4 text-center">No calls scheduled for today</p>
+      )}
+    </div>
+  );
+}
+
+function CallEntry({ lead, onSelectLead, overdue }: { lead: Lead; onSelectLead: (id: string) => void; overdue?: boolean }) {
+  const stage = PIPELINE_STAGES.find(s => s.key === lead.pipelineStage);
+  return (
+    <button
+      onClick={() => onSelectLead(lead.id)}
+      className={`w-full text-left flex items-center gap-3 p-2.5 rounded-lg transition-all hover:shadow-sm ${overdue ? 'bg-red-100 hover:bg-red-200' : 'bg-surface-2 hover:bg-surface-3'}`}
+    >
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-text-primary">{lead.companyName}</p>
+        <p className="text-xs text-text-secondary">{lead.pointOfContact}</p>
+      </div>
+      {lead.phone && <span className="text-xs font-mono text-text-secondary shrink-0">{lead.phone}</span>}
+      {stage && <span className="text-[10px] px-2 py-0.5 rounded-full shrink-0" style={{ backgroundColor: stage.color + '20', color: stage.color }}>{stage.label}</span>}
+    </button>
+  );
+}
+
+function WeekView({ leads, onSelectLead, date, setDate }: { leads: Lead[]; onSelectLead: (id: string) => void; date: Date; setDate: (d: Date) => void }) {
+  const today = new Date().toISOString().split('T')[0];
+
+  // Get Monday of current week
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(d.setDate(diff));
+
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const dd = new Date(monday);
+    dd.setDate(monday.getDate() + i);
+    return dd.toISOString().split('T')[0];
+  });
+
+  const navWeek = (dir: number) => {
+    const next = new Date(date);
+    next.setDate(next.getDate() + dir * 7);
+    setDate(next);
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <button onClick={() => navWeek(-1)} className="text-xs text-text-secondary hover:text-text-primary px-2 py-1 rounded hover:bg-surface-3">← Prev</button>
+        <p className="text-xs text-text-secondary font-medium">
+          {new Date(days[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — {new Date(days[6]).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+        </p>
+        <button onClick={() => navWeek(1)} className="text-xs text-text-secondary hover:text-text-primary px-2 py-1 rounded hover:bg-surface-3">Next →</button>
+      </div>
+      <div className="grid grid-cols-7 gap-2">
+        {days.map(dayStr => {
+          const dayLeads = leads.filter(l => l.scheduledCallDate && !l.callCompleted && l.scheduledCallDate.split('T')[0] === dayStr);
+          const isToday = dayStr === today;
+          const isPast = dayStr < today;
+          const hasOverdue = isPast && dayLeads.length > 0;
+          return (
+            <div key={dayStr} className={`rounded-lg p-2 min-h-[100px] border ${isToday ? 'border-brand bg-brand/5' : hasOverdue ? 'border-red-300 bg-red-50' : 'border-border bg-surface-2'}`}>
+              <p className={`text-[10px] font-medium mb-1 ${isToday ? 'text-brand' : 'text-text-tertiary'}`}>
+                {new Date(dayStr + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' })}
+              </p>
+              {dayLeads.length > 0 && (
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${hasOverdue ? 'bg-red-200 text-red-700' : 'bg-brand/10 text-brand'}`}>{dayLeads.length}</span>
+              )}
+              <div className="mt-1 space-y-0.5">
+                {dayLeads.slice(0, 3).map(l => (
+                  <button key={l.id} onClick={() => onSelectLead(l.id)}
+                    className="block w-full text-left text-[9px] text-text-secondary truncate hover:text-text-primary">
+                    {l.companyName}
+                  </button>
+                ))}
+                {dayLeads.length > 3 && <p className="text-[9px] text-text-tertiary">+{dayLeads.length - 3} more</p>}
               </div>
-            );
-          })}
-          {filteredActivities.length === 0 && <p className="text-xs text-text-tertiary">No activity yet</p>}
-        </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function MonthView({ leads, date, setDate }: { leads: Lead[]; date: Date; setDate: (d: Date) => void }) {
+  const today = new Date().toISOString().split('T')[0];
+  const year = date.getFullYear();
+  const month = date.getMonth();
+
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startPad = (firstDay.getDay() + 6) % 7; // Monday start
+
+  const totalDays = lastDay.getDate();
+  const cells: (string | null)[] = Array.from({ length: startPad }, () => null);
+  for (let i = 1; i <= totalDays; i++) {
+    const d = new Date(year, month, i);
+    cells.push(d.toISOString().split('T')[0]);
+  }
+
+  const navMonth = (dir: number) => setDate(new Date(year, month + dir, 1));
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <button onClick={() => navMonth(-1)} className="text-xs text-text-secondary hover:text-text-primary px-2 py-1 rounded hover:bg-surface-3">← Prev</button>
+        <p className="text-sm font-semibold text-text-primary">{date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
+        <button onClick={() => navMonth(1)} className="text-xs text-text-secondary hover:text-text-primary px-2 py-1 rounded hover:bg-surface-3">Next →</button>
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
+          <div key={d} className="text-[10px] text-text-tertiary text-center py-1 font-medium">{d}</div>
+        ))}
+        {cells.map((dayStr, i) => {
+          if (!dayStr) return <div key={`pad-${i}`} className="h-10" />;
+          const dayLeads = leads.filter(l => l.scheduledCallDate && l.scheduledCallDate.split('T')[0] === dayStr);
+          const completedCount = dayLeads.filter(l => l.callCompleted).length;
+          const pendingCount = dayLeads.filter(l => !l.callCompleted).length;
+          const isToday = dayStr === today;
+          const isPast = dayStr < today;
+          const hasOverdue = isPast && pendingCount > 0;
+
+          return (
+            <button key={dayStr}
+              onClick={() => { if (pendingCount > 0) { setDate(new Date(dayStr + 'T12:00:00')); } }}
+              className={`h-10 rounded-lg text-xs relative flex items-center justify-center transition-all ${
+                isToday ? 'bg-brand text-white font-bold' :
+                hasOverdue ? 'bg-red-100 text-red-700' :
+                'text-text-secondary hover:bg-surface-3'
+              }`}>
+              {new Date(dayStr + 'T12:00:00').getDate()}
+              {dayLeads.length > 0 && (
+                <span className={`absolute -top-1 -right-1 w-4 h-4 rounded-full text-[8px] font-bold flex items-center justify-center ${
+                  hasOverdue ? 'bg-red-500 text-white' :
+                  completedCount === dayLeads.length ? 'bg-green-500 text-white' :
+                  'bg-brand text-white'
+                }`}>{dayLeads.length}</span>
+              )}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

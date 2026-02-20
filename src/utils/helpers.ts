@@ -11,39 +11,23 @@ export function daysInStage(lead: Lead): number {
   return daysBetween(lead.stageEnteredDate, new Date().toISOString());
 }
 
-export function isOverdue(lead: Lead): boolean {
-  if (!lead.nextFollowUpDate) return false;
-  return new Date(lead.nextFollowUpDate) < new Date();
+export function isCallOverdue(lead: Lead): boolean {
+  if (!lead.scheduledCallDate || lead.callCompleted) return false;
+  const scheduled = new Date(lead.scheduledCallDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return scheduled < today;
 }
 
-export function isDueToday(lead: Lead): boolean {
-  if (!lead.nextFollowUpDate) return false;
+export function isCallToday(lead: Lead): boolean {
+  if (!lead.scheduledCallDate || lead.callCompleted) return false;
   const today = new Date().toISOString().split('T')[0];
-  return lead.nextFollowUpDate.split('T')[0] === today;
+  return lead.scheduledCallDate.split('T')[0] === today;
 }
 
-export function calculateLeadScore(lead: Lead): number {
-  let score = 0;
-  // Budget (deal value)
-  if (lead.dealValue >= 5000) score += 25;
-  else if (lead.dealValue >= 2000) score += 15;
-  else if (lead.dealValue > 0) score += 5;
-  // Authority (title)
-  const title = lead.title.toLowerCase();
-  if (['ceo', 'owner', 'founder', 'president', 'director', 'vp'].some(t => title.includes(t))) score += 25;
-  else if (['manager', 'head'].some(t => title.includes(t))) score += 15;
-  else if (title) score += 5;
-  // Need (has industry and company info)
-  if (lead.industry && lead.industry !== 'Other') score += 15;
-  if (lead.companySize) score += 10;
-  // Timeline (has expected close date)
-  if (lead.expectedCloseDate) {
-    const days = daysBetween(new Date().toISOString(), lead.expectedCloseDate);
-    if (days <= 30) score += 25;
-    else if (days <= 90) score += 15;
-    else score += 5;
-  }
-  return Math.min(100, score);
+export function isCallOnDate(lead: Lead, dateStr: string): boolean {
+  if (!lead.scheduledCallDate) return false;
+  return lead.scheduledCallDate.split('T')[0] === dateStr;
 }
 
 export function filterLeads(leads: Lead[], filters: Filters): Lead[] {
@@ -51,19 +35,16 @@ export function filterLeads(leads: Lead[], filters: Filters): Lead[] {
     if (filters.search) {
       const s = filters.search.toLowerCase();
       const searchable = [
-        lead.companyName, lead.contactName, lead.email, lead.phone,
-        lead.city, lead.industry, lead.title, lead.website,
-        ...lead.tags, ...lead.notes.map(n => n.content)
+        lead.companyName, lead.pointOfContact, lead.email, lead.phone,
+        lead.location, lead.industry, lead.needs,
+        ...lead.notes.map(n => n.content)
       ].join(' ').toLowerCase();
       if (!searchable.includes(s)) return false;
     }
     if (filters.stage && lead.pipelineStage !== filters.stage) return false;
     if (filters.industry && lead.industry !== filters.industry) return false;
-    if (filters.city && !lead.city.toLowerCase().includes(filters.city.toLowerCase())) return false;
     if (filters.leadSource && lead.leadSource !== filters.leadSource) return false;
     if (filters.assignedTo && lead.assignedTo !== filters.assignedTo) return false;
-    if (filters.status && lead.status !== filters.status) return false;
-    if (filters.tags.length > 0 && !filters.tags.some(t => lead.tags.includes(t))) return false;
     if (filters.dateFrom && lead.createdDate < filters.dateFrom) return false;
     if (filters.dateTo && lead.createdDate > filters.dateTo) return false;
     return true;
@@ -82,31 +63,4 @@ export function formatDate(dateStr: string): string {
 export function formatDateShort(dateStr: string): string {
   if (!dateStr) return '—';
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-export function createEmptyLead(): Omit<Lead, 'id' | 'createdDate' | 'stageEnteredDate'> {
-  return {
-    companyName: '',
-    contactName: '',
-    title: '',
-    email: '',
-    phone: '',
-    website: '',
-    industry: '',
-    companySize: '',
-    estimatedMonthlyRevenue: '',
-    city: '',
-    leadSource: '',
-    leadScore: 0,
-    pipelineStage: 'new_lead',
-    dealValue: 0,
-    expectedCloseDate: '',
-    assignedTo: '',
-    lastContactDate: '',
-    nextFollowUpDate: '',
-    notes: [],
-    tags: [],
-    status: 'Active',
-    activities: [],
-  };
 }

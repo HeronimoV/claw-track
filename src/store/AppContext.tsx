@@ -3,7 +3,6 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Lead, Filters, FilterPreset, AppSettings, PipelineStage, Activity } from '../types';
 import { DEFAULT_FILTERS } from '../types';
 import { loadLeads, saveLeads, loadFilterPresets, saveFilterPresets, loadSettings, saveSettings } from '../utils/storage';
-import { calculateLeadScore } from '../utils/helpers';
 import { useAuth } from './AuthContext';
 
 type View = 'pipeline' | 'list' | 'dashboard' | 'detail' | 'team' | 'profile';
@@ -52,8 +51,7 @@ function reducer(state: State, action: Action): State {
         ...state,
         leads: state.leads.map(l => {
           if (l.id !== action.id) return l;
-          const newStatus = action.stage === 'closed_won' ? 'Won' : action.stage === 'closed_lost' ? 'Lost' : l.status;
-          return { ...l, pipelineStage: action.stage, stageEnteredDate: now, status: newStatus, lastEditedBy: action.userName, lastEditedAt: now };
+          return { ...l, pipelineStage: action.stage, stageEnteredDate: now, lastEditedBy: action.userName, lastEditedAt: now };
         }),
       };
     }
@@ -104,7 +102,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     filters: DEFAULT_FILTERS,
     filterPresets: loadFilterPresets(),
     settings: loadSettings(),
-    currentView: 'pipeline' as View,
+    currentView: 'dashboard' as View,
     selectedLeadId: null,
     showAddModal: false,
     showImportModal: false,
@@ -119,40 +117,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const lead: Lead = {
       id: uuidv4(),
       companyName: '',
-      contactName: '',
-      title: '',
-      email: '',
-      phone: '',
-      website: '',
+      pointOfContact: '',
       industry: '',
-      companySize: '',
-      estimatedMonthlyRevenue: '',
-      city: '',
-      leadSource: '',
-      leadScore: 0,
+      needs: '',
+      employeeCount: '',
+      annualRevenue: '',
+      location: '',
+      notes: [],
       pipelineStage: 'new_lead',
       dealValue: 0,
-      expectedCloseDate: '',
+      leadSource: '',
       assignedTo: '',
-      lastContactDate: '',
-      nextFollowUpDate: '',
-      notes: [],
-      tags: [],
-      createdDate: now,
-      status: 'Active',
+      phone: '',
+      email: '',
+      scheduledCallDate: '',
+      callCompleted: false,
       stageEnteredDate: now,
+      createdDate: now,
       activities: [],
       lastEditedBy: currentUser?.name,
       lastEditedAt: now,
       ...data,
     };
-    lead.leadScore = calculateLeadScore(lead);
     lead.activities = [{ id: uuidv4(), leadId: lead.id, type: 'Note', description: 'Lead created', timestamp: now, userId: currentUser?.id, userName: currentUser?.name }];
     dispatch({ type: 'ADD_LEAD', lead });
   };
 
   const updateLead = (lead: Lead) => {
-    lead.leadScore = calculateLeadScore(lead);
     lead.lastEditedBy = currentUser?.name;
     lead.lastEditedAt = new Date().toISOString();
     dispatch({ type: 'UPDATE_LEAD', lead });
@@ -184,10 +175,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       userId: currentUser?.id, userName: currentUser?.name,
     };
     dispatch({ type: 'ADD_ACTIVITY', leadId, activity });
-    dispatch({
-      type: 'UPDATE_LEAD',
-      lead: { ...state.leads.find(l => l.id === leadId)!, lastContactDate: new Date().toISOString(), lastEditedBy: currentUser?.name, lastEditedAt: new Date().toISOString() },
-    });
   };
 
   return (

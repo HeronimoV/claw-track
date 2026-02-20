@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useApp } from '../../store/AppContext';
 import { useAuth } from '../../store/AuthContext';
-import { PIPELINE_STAGES, INDUSTRIES, LEAD_SOURCES, LEAD_STATUSES } from '../../types';
+import { PIPELINE_STAGES, INDUSTRIES, LEAD_SOURCES } from '../../types';
 
 const selectClass = "bg-surface-2 border border-border rounded-lg px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-brand/50 transition-all";
 
@@ -34,17 +34,6 @@ export default function FilterBar() {
         <option value="">All Team</option>
         {activeMembers.map(m => <option key={m}>{m}</option>)}
       </select>
-      <select value={f.status} onChange={e => set({ status: e.target.value })} className={selectClass}>
-        <option value="">All Statuses</option>
-        {LEAD_STATUSES.map(s => <option key={s}>{s}</option>)}
-      </select>
-      <input
-        type="text"
-        placeholder="City..."
-        value={f.city}
-        onChange={e => set({ city: e.target.value })}
-        className={`${selectClass} w-28`}
-      />
       <input type="date" value={f.dateFrom} onChange={e => set({ dateFrom: e.target.value })} className={selectClass} />
       <input type="date" value={f.dateTo} onChange={e => set({ dateTo: e.target.value })} className={selectClass} />
 
@@ -64,30 +53,17 @@ export default function FilterBar() {
 
       {showSave ? (
         <div className="flex items-center gap-1">
-          <input
-            type="text"
-            placeholder="Preset name"
-            value={presetName}
-            onChange={e => setPresetName(e.target.value)}
-            className={`${selectClass} w-32`}
-            autoFocus
-          />
-          <button
-            onClick={() => {
-              if (presetName.trim()) {
-                dispatch({ type: 'SAVE_PRESET', preset: { id: uuidv4(), name: presetName.trim(), filters: f } });
-                setPresetName('');
-                setShowSave(false);
-              }
-            }}
-            className="text-xs text-brand hover:text-brand-light"
-          >Save</button>
+          <input type="text" placeholder="Preset name" value={presetName} onChange={e => setPresetName(e.target.value)} className={`${selectClass} w-32`} autoFocus />
+          <button onClick={() => {
+            if (presetName.trim()) {
+              dispatch({ type: 'SAVE_PRESET', preset: { id: uuidv4(), name: presetName.trim(), filters: f } });
+              setPresetName(''); setShowSave(false);
+            }
+          }} className="text-xs text-brand hover:text-brand-light">Save</button>
           <button onClick={() => setShowSave(false)} className="text-xs text-text-tertiary">✕</button>
         </div>
       ) : (
-        <button onClick={() => setShowSave(true)} className="text-xs text-text-tertiary hover:text-text-secondary">
-          💾 Save Filter
-        </button>
+        <button onClick={() => setShowSave(true)} className="text-xs text-text-tertiary hover:text-text-secondary">💾 Save Filter</button>
       )}
     </div>
   );

@@ -2,36 +2,38 @@ import Papa from 'papaparse';
 import { v4 as uuidv4 } from 'uuid';
 import type { Lead } from '../types';
 
-const FIELD_MAP: Record<string, keyof Lead> = {
+const FIELD_MAP: Record<string, string> = {
   company_name: 'companyName',
   companyname: 'companyName',
   company: 'companyName',
-  contact_name: 'contactName',
-  contactname: 'contactName',
-  contact: 'contactName',
-  name: 'contactName',
-  title: 'title',
-  role: 'title',
+  contact_name: 'pointOfContact',
+  contactname: 'pointOfContact',
+  contact: 'pointOfContact',
+  point_of_contact: 'pointOfContact',
+  name: 'pointOfContact',
   email: 'email',
   phone: 'phone',
   telephone: 'phone',
-  website: 'website',
-  url: 'website',
   industry: 'industry',
-  city: 'city',
-  location: 'city',
-  notes: 'notes' as keyof Lead,
-  deal_value: 'dealValue' as keyof Lead,
-  dealvalue: 'dealValue' as keyof Lead,
+  city: 'location',
+  location: 'location',
+  needs: 'needs',
+  employee_count: 'employeeCount',
+  employeecount: 'employeeCount',
+  employees: 'employeeCount',
+  annual_revenue: 'annualRevenue',
+  annualrevenue: 'annualRevenue',
+  revenue: 'annualRevenue',
+  notes: '_notes',
+  deal_value: '_dealValue',
+  dealvalue: '_dealValue',
+  deal_tier: '_dealValue',
+  dealtier: '_dealValue',
   lead_source: 'leadSource',
   leadsource: 'leadSource',
   source: 'leadSource',
   assigned_to: 'assignedTo',
   assignedto: 'assignedTo',
-  company_size: 'companySize',
-  companysize: 'companySize',
-  status: 'status',
-  tags: 'tags' as keyof Lead,
 };
 
 export function parseCSV(file: File): Promise<Lead[]> {
@@ -45,39 +47,33 @@ export function parseCSV(file: File): Promise<Lead[]> {
           const lead: Lead = {
             id: uuidv4(),
             companyName: '',
-            contactName: '',
-            title: '',
-            email: '',
-            phone: '',
-            website: '',
+            pointOfContact: '',
             industry: '',
-            companySize: '',
-            estimatedMonthlyRevenue: '',
-            city: '',
-            leadSource: '',
-            leadScore: 0,
+            needs: '',
+            employeeCount: '',
+            annualRevenue: '',
+            location: '',
+            notes: [],
             pipelineStage: 'new_lead',
             dealValue: 0,
-            expectedCloseDate: '',
+            leadSource: '',
             assignedTo: '',
-            lastContactDate: '',
-            nextFollowUpDate: '',
-            notes: [],
-            tags: [],
-            createdDate: now,
-            status: 'Active',
+            phone: '',
+            email: '',
+            scheduledCallDate: '',
+            callCompleted: false,
             stageEnteredDate: now,
-            activities: [],
+            createdDate: now,
+            activities: [{ id: uuidv4(), leadId: '', type: 'Note', description: 'Imported from CSV', timestamp: now }],
           };
+          lead.activities[0].leadId = lead.id;
 
           for (const [csvCol, value] of Object.entries(row)) {
             const key = FIELD_MAP[csvCol.toLowerCase().trim().replace(/\s+/g, '_')];
             if (!key) continue;
-            if (key === 'notes' as unknown) {
+            if (key === '_notes') {
               if (value) lead.notes = [{ id: uuidv4(), content: value, createdAt: now }];
-            } else if (key === 'tags' as unknown) {
-              if (value) lead.tags = value.split(',').map(t => t.trim()).filter(Boolean);
-            } else if (key === 'dealValue' as unknown) {
+            } else if (key === '_dealValue') {
               lead.dealValue = parseFloat(value.replace(/[^0-9.]/g, '')) || 0;
             } else {
               (lead as unknown as Record<string, unknown>)[key] = value || '';
@@ -85,7 +81,7 @@ export function parseCSV(file: File): Promise<Lead[]> {
           }
           return lead;
         });
-        resolve(leads.filter(l => l.companyName || l.contactName));
+        resolve(leads.filter(l => l.companyName || l.pointOfContact));
       },
       error: reject,
     });
@@ -95,23 +91,19 @@ export function parseCSV(file: File): Promise<Lead[]> {
 export function exportCSV(leads: Lead[]): string {
   const rows = leads.map(l => ({
     company_name: l.companyName,
-    contact_name: l.contactName,
-    title: l.title,
+    point_of_contact: l.pointOfContact,
     email: l.email,
     phone: l.phone,
-    website: l.website,
     industry: l.industry,
-    company_size: l.companySize,
-    city: l.city,
+    needs: l.needs,
+    employee_count: l.employeeCount,
+    annual_revenue: l.annualRevenue,
+    location: l.location,
     lead_source: l.leadSource,
     pipeline_stage: l.pipelineStage,
     deal_value: l.dealValue,
-    status: l.status,
     assigned_to: l.assignedTo,
-    lead_score: l.leadScore,
-    expected_close_date: l.expectedCloseDate,
-    next_follow_up: l.nextFollowUpDate,
-    tags: l.tags.join(', '),
+    scheduled_call_date: l.scheduledCallDate,
     notes: l.notes.map(n => n.content).join(' | '),
     created_date: l.createdDate,
   }));

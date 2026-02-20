@@ -47,7 +47,7 @@ export default function ImportModal() {
           >
             <p className="text-3xl mb-3">📥</p>
             <p className="text-sm text-text-secondary">Click to upload a CSV file</p>
-            <p className="text-xs text-text-tertiary mt-1">Supports: company_name, contact_name, title, email, phone, website, industry, city, notes</p>
+            <p className="text-xs text-text-tertiary mt-1">Supports: company_name, contact_name, industry, city, phone, email, notes, deal_tier</p>
           </div>
           <input ref={fileRef} type="file" accept=".csv" onChange={handleFile} className="hidden" />
           {error && <p className="text-sm text-danger">{error}</p>}
@@ -73,7 +73,7 @@ export default function ImportModal() {
                 {parsed.slice(0, 20).map(l => (
                   <tr key={l.id}>
                     <td className="px-3 py-2 text-text-primary">{l.companyName}</td>
-                    <td className="px-3 py-2 text-text-secondary">{l.contactName}</td>
+                    <td className="px-3 py-2 text-text-secondary">{l.pointOfContact}</td>
                     <td className="px-3 py-2 text-text-secondary">{l.email}</td>
                     <td className="px-3 py-2 text-text-secondary">{l.phone}</td>
                     <td className="px-3 py-2 text-text-secondary">{l.industry}</td>
