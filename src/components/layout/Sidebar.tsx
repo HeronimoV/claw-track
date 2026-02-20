@@ -14,6 +14,7 @@ export default function Sidebar() {
     { key: 'pipeline' as const, label: 'Pipeline', icon: '📊' },
     { key: 'list' as const, label: 'All Leads', icon: '📋' },
     { key: 'clients' as const, label: 'Active Clients', icon: '👥' },
+    { key: 'contracts' as const, label: 'Contracts', icon: '📄' },
     { key: 'tickets' as const, label: 'HelpDesk', icon: '🎫' },
     ...(currentUser?.role === 'Admin' ? [{ key: 'team' as const, label: 'Team', icon: '👥' }] : []),
   ];
