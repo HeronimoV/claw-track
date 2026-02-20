@@ -18,7 +18,6 @@ export default function Sidebar() {
     { key: 'meetings' as const, label: 'Meeting Notes', icon: '📝' },
     { key: 'reports' as const, label: 'Reports', icon: '📉' },
     { key: 'revenue' as const, label: 'Revenue', icon: '💰' },
-    { key: 'leaderboard' as const, label: 'Leaderboard', icon: '🏆' },
     { key: 'contracts' as const, label: 'Contracts', icon: '📄' },
     { key: 'emails' as const, label: 'Email Templates', icon: '📧' },
     { key: 'training' as const, label: 'Training', icon: '📚' },
